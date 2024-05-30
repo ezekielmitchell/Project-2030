@@ -4,10 +4,15 @@ import threading
 from envirophat import light, weather
 import csv
 
+# global variables
+now = None
+lighting = None
+temp = None
 
 # data collection
 dataFile = 'envirophat_data.csv'
 fields = ['Date/time', 'Temperature', 'Lighting']
+dataLock = threading.Lock()
 
 def writing():
 	with open(dataFile, mode='w', newline='') as file:
@@ -16,39 +21,47 @@ def writing():
 
 # collect date/time data
 def dateTime():
+	global now 
 	while True:
-		global now 
-		now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+		currentTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+		with dataLock:
+			now = currentTime
 		print(f'Time: {now}')
-		time.sleep(1)
+		time.sleep(3)
 
 
 
 # collect light data
 def lightData():
-	while True:
-		global lighting 
-		lighting = light.light()
+	global lighting
+	while True: 
+		currentLight = light.light()
+		with dataLock:
+			lighting = currentLight
 		print(f'Light level: {lighting}')
-		time.sleep(1)
+		time.sleep(3)
 	
 
 # collect temperature data
 def tempData():
-	while True:
-		global temp 
-		temp = weather.temperature()
+	global temp
+	while True: 
+		currentTemp = weather.temperature()
+		with dataLock:
+			temp = currentTemp
 		print(f'Temperature: {temp}')
-		time.sleep(1)
+		time.sleep(3)
 
 
 # collect data
 def dataCollect():
-	
 	while True:
-		with open(dataFile, mode='a', newline='') as file:
-			writer = csv.writer(file)
-			writer.writerow([now, temp, lighting])
+		with dataLock:
+			if now is not None and temp is not None and lighting is not None:
+				with open(dataFile, mode='a', newline='') as file:
+					writer = csv.writer(file)
+					writer.writerow([now, temp, lighting])
+		time.sleep(3)
 
 if __name__ == "__main__":
 	
